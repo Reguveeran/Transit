@@ -1,0 +1,44 @@
+name: UniTransit CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint-and-test:
+    name: Lint & Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest
+
+      - name: Run Schema & Unit Tests
+        run: |
+          PYTHONPATH=. python -m unittest discover -s tests -v
+
+  docker-lint:
+    name: Dockerfile Lint & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Compose Configuration
+        run: |
+          if [ -f docker-compose.yml ]; then
+            docker compose config
+          fi
