@@ -1,5 +1,11 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from apps.alerts.views import AlertViewSet, ServiceAlertViewSet
+
+router = DefaultRouter()
+router.register(r"service", ServiceAlertViewSet, basename="servicealert")
+router.register(r"", AlertViewSet, basename="alert")
 
 urlpatterns = [
-    # Endpoints will be connected in Phase 3
+    path("", include(router.urls)),
 ]

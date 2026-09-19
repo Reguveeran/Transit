@@ -1,0 +1,59 @@
+# ==========================================
+# Multi-Stage Dockerfile for UniTransit Backend
+# ==========================================
+
+# Stage 1: Build Dependencies
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Stage 2: Final Production Runtime
+FROM python:3.11-slim AS runner
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/home/unitransit/.local/bin:$PATH" \
+    PORT=8000
+
+# Install runtime spatial libraries (GDAL, GEOS, PROJ) and curl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    gdal-bin \
+    libgdal-dev \
+    libgeos-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Security: Non-root user
+RUN groupadd -g 10001 unitransit && \
+    useradd -u 10001 -g unitransit -m -s /bin/bash unitransit
+
+WORKDIR /app
+
+# Copy Python wheels and dependencies from builder
+COPY --from=builder --chown=unitransit:unitransit /root/.local /home/unitransit/.local
+
+# Copy application source
+COPY --chown=unitransit:unitransit backend/ /app/backend/
+COPY --chown=unitransit:unitransit adapters/ /app/adapters/
+COPY --chown=unitransit:unitransit workers/ /app/workers/
+
+USER unitransit
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+WORKDIR /app/backend
+
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "core.asgi:application"]

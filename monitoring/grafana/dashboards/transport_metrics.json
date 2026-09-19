@@ -1,0 +1,30 @@
+{
+  "editable": true,
+  "panels": [
+    {
+      "title": "Active Vehicles by Modality",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "unitransit_active_vehicles",
+          "legendFormat": "{{mode}}"
+        }
+      ]
+    },
+    {
+      "title": "Total Alerts Triggered",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(unitransit_alerts_triggered_total[1m])) by (alert_type)",
+          "legendFormat": "{{alert_type}}"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "title": "3. Transport Metrics",
+  "uid": "unitransit-transport"
+}

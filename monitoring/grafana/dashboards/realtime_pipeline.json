@@ -1,0 +1,41 @@
+{
+  "editable": true,
+  "panels": [
+    {
+      "title": "Events Processed per Second",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(unitransit_telemetry_events_processed_total[1m]))",
+          "legendFormat": "Events / sec"
+        }
+      ]
+    },
+    {
+      "title": "Active WebSocket Connections",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "unitransit_websocket_connections_active",
+          "legendFormat": "Connected Clients"
+        }
+      ]
+    },
+    {
+      "title": "Telemetry Processing Latency (Worker)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(unitransit_event_processing_latency_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99 Latency (s)"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "title": "4. Real-time Processing Pipeline",
+  "uid": "unitransit-pipeline"
+}

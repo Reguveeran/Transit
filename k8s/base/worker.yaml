@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-position
+  namespace: unitransit
+  labels:
+    app: worker-position
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: worker-position
+  template:
+    metadata:
+      labels:
+        app: worker-position
+    spec:
+      containers:
+        - name: worker-position
+          image: unitransit/worker:latest
+          command: ["python", "workers/position_worker/position_worker.py"]
+          envFrom:
+            - configMapRef:
+                name: unitransit-config
+            - secretRef:
+                name: unitransit-secrets
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-alert
+  namespace: unitransit
+  labels:
+    app: worker-alert
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker-alert
+  template:
+    metadata:
+      labels:
+        app: worker-alert
+    spec:
+      containers:
+        - name: worker-alert
+          image: unitransit/worker:latest
+          command: ["python", "workers/alert_worker/alert_worker.py"]
+          envFrom:
+            - configMapRef:
+                name: unitransit-config
+            - secretRef:
+                name: unitransit-secrets
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

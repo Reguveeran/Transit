@@ -6,6 +6,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.http import JsonResponse
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from common.metrics import metrics_view
 
 
 def health_check(request):
@@ -30,9 +31,10 @@ def ready_check(request):
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    # Probes
+    # Probes & Metrics
     path("health", health_check, name="health-check"),
     path("ready", ready_check, name="ready-check"),
+    path("metrics", metrics_view, name="prometheus-metrics"),
     # OpenAPI Documentation
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

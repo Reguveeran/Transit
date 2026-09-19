@@ -1,0 +1,30 @@
+# ==========================================
+# Dockerfile for UniTransit Background Workers
+# ==========================================
+
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g 10001 unitransit && \
+    useradd -u 10001 -g unitransit -m -s /bin/bash unitransit
+
+WORKDIR /app
+
+COPY backend/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY --chown=unitransit:unitransit backend/ /app/backend/
+COPY --chown=unitransit:unitransit adapters/ /app/adapters/
+COPY --chown=unitransit:unitransit workers/ /app/workers/
+
+USER unitransit
+
+# Default entrypoint runs position worker, can be overridden in compose
+CMD ["python", "workers/position_worker/position_worker.py"]

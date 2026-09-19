@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   # ==========================================
-  # Database Layer (PostgreSQL + PostGIS)
+  # 1. Database (PostgreSQL + PostGIS)
   # ==========================================
   postgres:
     image: postgis/postgis:15-3.3-alpine
@@ -23,7 +21,7 @@ services:
       retries: 5
 
   # ==========================================
-  # Real-Time Event Broker (Redis)
+  # 2. In-Memory Event Streaming Broker (Redis)
   # ==========================================
   redis:
     image: redis:7-alpine
@@ -40,7 +38,120 @@ services:
       retries: 5
 
   # ==========================================
-  # Observability Layer
+  # 3. Backend (Django + Channels + DRF)
+  # ==========================================
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: unitransit-backend
+    restart: unless-stopped
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY:-unitransit-production-secret-key-2026}
+      - ALLOWED_HOSTS=*
+      - POSTGRES_DB=${POSTGRES_DB:-unitransit}
+      - POSTGRES_USER=${POSTGRES_USER:-unitransit}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-unitransit_secure_password}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+
+  # ==========================================
+  # 4. Position Worker (Redis Stream Consumer)
+  # ==========================================
+  worker-position:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: unitransit-worker-position
+    restart: unless-stopped
+    command: ["python", "workers/position_worker/position_worker.py"]
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-unitransit}
+      - POSTGRES_USER=${POSTGRES_USER:-unitransit}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-unitransit_secure_password}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - backend
+      - redis
+
+  # ==========================================
+  # 5. Alert Worker (Rule Evaluator)
+  # ==========================================
+  worker-alert:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: unitransit-worker-alert
+    restart: unless-stopped
+    command: ["python", "workers/alert_worker/alert_worker.py"]
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-unitransit}
+      - POSTGRES_USER=${POSTGRES_USER:-unitransit}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-unitransit_secure_password}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - backend
+      - redis
+
+  # ==========================================
+  # 6. Transport Telemetry Simulator
+  # ==========================================
+  simulator:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.simulator
+    container_name: unitransit-simulator
+    restart: unless-stopped
+    command: ["python", "adapters/simulator/simulator.py", "--vehicles", "30", "--interval", "2.0", "--redis-host", "redis"]
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ==========================================
+  # 7. Frontend (React + Leaflet + Nginx)
+  # ==========================================
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: unitransit-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+
+  # ==========================================
+  # 8. Unified Reverse Proxy Gateway
+  # ==========================================
+  gateway:
+    image: nginx:1.25-alpine
+    container_name: unitransit-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx/gateway-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
+  # ==========================================
+  # 9. Observability: Prometheus
   # ==========================================
   prometheus:
     image: prom/prometheus:v2.47.0
@@ -52,6 +163,9 @@ services:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
 
+  # ==========================================
+  # 10. Observability: Grafana
+  # ==========================================
   grafana:
     image: grafana/grafana:10.1.0
     container_name: unitransit-grafana
@@ -62,7 +176,11 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
     volumes:
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
       - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
 
 volumes:
   postgres_data:

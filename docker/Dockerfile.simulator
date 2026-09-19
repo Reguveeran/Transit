@@ -1,0 +1,21 @@
+# ==========================================
+# Dockerfile for UniTransit Telemetry Simulator
+# ==========================================
+
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN groupadd -g 10001 unitransit && \
+    useradd -u 10001 -g unitransit -m -s /bin/bash unitransit
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir redis pydantic
+
+COPY --chown=unitransit:unitransit adapters/ /app/adapters/
+
+USER unitransit
+
+CMD ["python", "adapters/simulator/simulator.py", "--vehicles", "30", "--interval", "2.0"]

@@ -6,39 +6,104 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+env:
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
-  lint-and-test:
-    name: Lint & Unit Tests
+  # ==========================================
+  # Stage 1: Quality Gate & Test Suites
+  # ==========================================
+  test-and-lint:
+    name: Lint & Automated Tests
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install Test Dependencies
+      - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest
+          pip install -r backend/requirements.txt flake8
 
-      - name: Run Schema & Unit Tests
+      - name: Code Style Linting (flake8)
         run: |
-          PYTHONPATH=. python -m unittest discover -s tests -v
+          flake8 backend adapters workers tests --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 backend adapters workers tests --count --exit-zero --max-complexity=15 --max-line-length=127 --statistics
 
-  docker-lint:
-    name: Dockerfile Lint & Validate
+      - name: Run Schema, Unit, API, WebSocket, Worker & Simulator Tests
+        run: |
+          PYTHONPATH=backend:. python backend/manage.py test tests -v 2
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package.json
+
+      - name: Install Frontend Dependencies & Build Production Bundle
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+  # ==========================================
+  # Stage 2: Docker Build & Trivy Security Scan
+  # ==========================================
+  docker-build-and-scan:
+    name: Docker Build & Trivy Security Scan
+    needs: test-and-lint
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Validate Compose Configuration
-        run: |
-          if [ -f docker-compose.yml ]; then
-            docker compose config
-          fi
+      - name: Set up Docker Buildx
+        uses: actions/setup-buildx-action@v3
+
+      - name: Build Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.backend
+          push: false
+          tags: unitransit-backend:${{ github.sha }}
+          load: true
+
+      - name: Build Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.frontend
+          push: false
+          tags: unitransit-frontend:${{ github.sha }}
+          load: true
+
+      - name: Run Trivy Vulnerability Scanner on Backend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'unitransit-backend:${{ github.sha }}'
+          format: 'table'
+          exit-code: '0' # Non-blocking in CI demonstration
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy Vulnerability Scanner on Frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'unitransit-frontend:${{ github.sha }}'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'

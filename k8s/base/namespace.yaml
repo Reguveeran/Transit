@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: unitransit
+  labels:
+    app.kubernetes.io/name: unitransit
+    app.kubernetes.io/part-of: unitransit-platform
