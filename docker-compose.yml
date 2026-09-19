@@ -41,6 +41,7 @@ services:
   # 3. Backend (Django + Channels + DRF)
   # ==========================================
   backend:
+    image: devopsproject-backend:latest
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
@@ -69,11 +70,10 @@ services:
   # 4. Position Worker (Redis Stream Consumer)
   # ==========================================
   worker-position:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.worker
+    image: devopsproject-backend:latest
     container_name: unitransit-worker-position
     restart: unless-stopped
+    working_dir: /app
     command: ["python", "workers/position_worker/position_worker.py"]
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-unitransit}
@@ -91,11 +91,10 @@ services:
   # 5. Alert Worker (Rule Evaluator)
   # ==========================================
   worker-alert:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.worker
+    image: devopsproject-backend:latest
     container_name: unitransit-worker-alert
     restart: unless-stopped
+    working_dir: /app
     command: ["python", "workers/alert_worker/alert_worker.py"]
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-unitransit}

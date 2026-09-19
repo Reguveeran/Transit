@@ -18,7 +18,7 @@ RUN groupadd -g 10001 unitransit && \
 WORKDIR /app
 
 COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --default-timeout=100 --retries 5 -r requirements.txt
 
 COPY --chown=unitransit:unitransit backend/ /app/backend/
 COPY --chown=unitransit:unitransit adapters/ /app/adapters/
