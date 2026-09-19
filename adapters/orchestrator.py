@@ -23,6 +23,7 @@ from adapters.common.event_schema import NormalizedTransportEvent
 from adapters.simulator.simulator import TransportSimulator
 from adapters.adsb.opensky_adapter import fetch_live_flights, normalize_opensky_vector
 from adapters.gtfs_realtime.gtfs_rt_adapter import fetch_gtfs_rt_feed, normalize_gtfs_entity
+from adapters.gtfs_realtime.transitland_adapter import TransitlandAdapter
 from adapters.ais.aishub_adapter import fetch_aishub_ships, normalize_ais_record
 
 logging.basicConfig(
@@ -38,8 +39,11 @@ class MultiModalOrchestrator:
 
         # Configuration flags from environment
         self.opensky_enabled = os.getenv("ENABLE_OPENSKY", "false").lower() in ("true", "1", "yes")
-        self.opensky_user = os.getenv("OPENSKY_USERNAME")
-        self.opensky_pass = os.getenv("OPENSKY_PASSWORD")
+        self.opensky_client_id = os.getenv("OPENSKY_CLIENT_ID")
+        self.opensky_client_secret = os.getenv("OPENSKY_CLIENT_SECRET")
+
+        self.transitland_key = os.getenv("TRANSITLAND_API_KEY")
+        self.transitland_adapter = TransitlandAdapter(self.transitland_key) if self.transitland_key else None
 
         self.gtfs_url = os.getenv("GTFS_RT_VEHICLE_POSITIONS_URL")
         self.gtfs_key = os.getenv("GTFS_RT_API_KEY")
@@ -57,7 +61,8 @@ class MultiModalOrchestrator:
         logger.info("Initialized MultiModalOrchestrator with adapter matrix:")
         logger.info(f"  • Ships (AIS): {'Enabled (AISHub: ' + self.aishub_user + ')' if self.aishub_user else 'Simulator Fallback'}")
         logger.info(f"  • Buses/Metro (GTFS-RT): {'Enabled (' + self.gtfs_url + ')' if self.gtfs_url else 'Simulator Fallback'}")
-        logger.info(f"  • Aircraft (ADS-B): {'Enabled (OpenSky)' if self.opensky_enabled else 'Simulator Fallback'}")
+        logger.info(f"  • Global Transit (Transitland v2): {'Connected (API Key present)' if self.transitland_key else 'Unconfigured'}")
+        logger.info(f"  • Aircraft (ADS-B): {'Enabled (OpenSky OAuth2)' if self.opensky_enabled else 'Simulator Fallback'}")
         logger.info(f"  • Simulator Engine: Active ({self.sim_vehicles_count} vehicles fallback)")
 
     def collect_events(self) -> List[NormalizedTransportEvent]:
@@ -66,7 +71,10 @@ class MultiModalOrchestrator:
         # 1. Aircraft: OpenSky Network
         if self.opensky_enabled:
             try:
-                states = fetch_live_flights(username=self.opensky_user, password=self.opensky_pass)
+                states = fetch_live_flights(
+                    client_id=self.opensky_client_id,
+                    client_secret=self.opensky_client_secret,
+                )
                 for s in (states or [])[:15]:
                     ev = normalize_opensky_vector(s)
                     if ev:

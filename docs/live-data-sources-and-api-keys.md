@@ -37,20 +37,23 @@ PYTHONPATH=backend:. ./.venv/bin/python backend/manage.py run_live_stream --vehi
 
 ---
 
-### B. Live Public Transit (Buses & Metro - GTFS-Realtime)
-* **Provider**: Your local city or national transit agency (e.g. NYC MTA, London TfL, MBTA, Paris RATP, Delhi Metro, Chennai MTC, Transport for NSW).
-* **Cost**: **Free** for developers.
-* **How to get keys**:
-  1. **New York MTA**: Register free at [api.mta.info](https://api.mta.info/) -> Receive an MTA API Key.
-  2. **London Transport (TfL)**: Register free at [api.tfl.gov.uk](https://api.tfl.gov.uk/) -> Receive `app_key`.
-  3. **Boston MBTA**: Register free at [api-v3.mbta.com](https://api-v3.mbta.com/) -> Receive API key.
-  4. **OpenMobilityData / Transitland**: Register free at [transit.land](https://www.transit.land/) -> Receive `transitland_api_key`.
+### B. Live Public Transit (Buses & Metro - Transitland v2 & GTFS-Realtime)
+* **Provider**: [Transitland v2 REST API](https://transit.land/) (Interline Technologies)
+* **Cost**: **Free Developer Tier**
+* **Status**: **Connected & Verified**
 * **Configuration in `.env`**:
   ```env
-  GTFS_RT_VEHICLE_POSITIONS_URL=https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs
-  GTFS_RT_API_KEY=your_transit_agency_api_key
+  ENABLE_TRANSITLAND=true
+  TRANSITLAND_API_KEY=iwa_live_tlv2api_5dca056029ec20f4573e86706f49b9143e01554be166d8dd3ABHBj
   ```
-* **Adapter Script**: `adapters/gtfs_realtime/gtfs_rt_adapter.py`
+* **Adapter Script**: `adapters/gtfs_realtime/transitland_adapter.py`
+* **Features**:
+  * Auto-discovers transit operators, routes, and active GTFS-Realtime vehicle position feeds worldwide.
+  * Connects directly to agency vehicle feeds (e.g. Arlington Transit, Barrie, Big Blue Bus, Burlington, Calgary Transit, NYC MTA, TfL).
+  * Direct feed override (optional):
+    ```env
+    GTFS_RT_VEHICLE_POSITIONS_URL=https://realtime.arlingtontransit.com/gtfsrt/vehicles
+    ```
 
 ---
 
