@@ -8,7 +8,9 @@ import asyncio
 import json
 import logging
 import os
+import queue
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -22,6 +24,44 @@ from apps.vehicles.models import TransportMode, Vehicle
 from apps.alerts.models import Alert
 
 logger = logging.getLogger("unitransit.live_stream")
+
+# Thread-safe queue for incoming AIS live vessel reports
+AIS_QUEUE = queue.Queue(maxsize=100)
+
+
+def start_ais_listener():
+    """Background thread runner to stream live ships from AISStream.io."""
+    ais_key = os.getenv("AISSTREAM_API_KEY")
+    if not ais_key:
+        return
+
+    def _runner():
+        from adapters.ais.aisstream_adapter import stream_live_ships
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        async def _consume():
+            while True:
+                try:
+                    async for ship_ev in stream_live_ships(api_key=ais_key):
+                        try:
+                            AIS_QUEUE.put_nowait(ship_ev)
+                        except queue.Full:
+                            # Drop oldest if backpressured
+                            try:
+                                AIS_QUEUE.get_nowait()
+                                AIS_QUEUE.put_nowait(ship_ev)
+                            except Exception:
+                                pass
+                except Exception as e:
+                    logger.warning(f"AIS runner reconnect loop: {e}")
+                    await asyncio.sleep(5)
+
+        loop.run_until_complete(_consume())
+
+    t = threading.Thread(target=_runner, daemon=True, name="AISStreamListener")
+    t.start()
+    logger.info("Started background AISStream listener thread.")
 
 
 class Command(BaseCommand):
@@ -38,7 +78,10 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"🚀 Starting UniTransit Live Telemetry Broadcaster ({vehicle_count} vehicles, {interval}s interval)..."))
 
-        # Initialize fleet states along routes
+        # Start live AIS marine vessel listener if configured
+        if os.getenv("AISSTREAM_API_KEY"):
+            start_ais_listener()
+            self.stdout.write(self.style.SUCCESS("  ⚓ AISStream.io live vessel listener active."))
         corridor_keys = list(CORRIDORS.keys())
         fleet = []
         for i in range(1, vehicle_count + 1):
@@ -187,6 +230,65 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.SUCCESS(f"  ✈️ Streamed {min(10, len(flights or []))} live OpenSky aircraft into live map."))
                     except Exception as air_err:
                         logger.error(f"Live aircraft stream note: {air_err}")
+
+                # Drain and stream live ships from AISStream.io
+                ais_streamed = 0
+                while not AIS_QUEUE.empty() and ais_streamed < 5:
+                    try:
+                        ship_ev = AIS_QUEUE.get_nowait()
+                        ship_mode, _ = TransportMode.objects.get_or_create(
+                            name="ferry",
+                            defaults={"display_name": "Marine Vessel / Ferry", "icon_name": "ship"},
+                        )
+                        s_obj, _ = Vehicle.objects.get_or_create(
+                            vehicle_id=ship_ev.vehicle_id,
+                            defaults={
+                                "transport_mode": ship_mode,
+                                "current_latitude": ship_ev.latitude,
+                                "current_longitude": ship_ev.longitude,
+                                "current_speed": ship_ev.speed,
+                                "current_heading": ship_ev.heading,
+                                "status": ship_ev.status,
+                                "label": f"{ship_ev.route_id} (AIS)",
+                            },
+                        )
+                        Vehicle.objects.filter(id=s_obj.id).update(
+                            current_latitude=ship_ev.latitude,
+                            current_longitude=ship_ev.longitude,
+                            current_speed=ship_ev.speed,
+                            current_heading=ship_ev.heading,
+                            status=ship_ev.status,
+                            last_seen=datetime.now(timezone.utc),
+                        )
+                        if channel_layer:
+                            async_to_sync(channel_layer.group_send)(
+                                "vehicle_updates",
+                                {
+                                    "type": "vehicle_update",
+                                    "data": {
+                                        "type": "vehicle.update",
+                                        "vehicle_id": ship_ev.vehicle_id,
+                                        "mode": "ferry",
+                                        "route_id": ship_ev.route_id,
+                                        "latitude": ship_ev.latitude,
+                                        "longitude": ship_ev.longitude,
+                                        "speed": ship_ev.speed,
+                                        "heading": ship_ev.heading,
+                                        "status": ship_ev.status,
+                                        "delay_seconds": 0,
+                                        "timestamp": now_iso,
+                                    },
+                                },
+                            )
+                        ais_streamed += 1
+                    except queue.Empty:
+                        break
+                    except Exception as s_err:
+                        logger.warning(f"AIS ship update error: {s_err}")
+                        break
+
+                if ais_streamed > 0 and tick % 5 == 0:
+                    self.stdout.write(self.style.SUCCESS(f"  🚢 Streamed {ais_streamed} live AIS ocean vessels into live map."))
 
                 if tick % 5 == 0:
                     self.stdout.write(f"  [~] Broadcast tick #{tick}: stream active for {len(fleet)} vehicles")

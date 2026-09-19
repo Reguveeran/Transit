@@ -26,6 +26,7 @@ def live_telemetry_status(request):
     """
     transitland_key = os.getenv("TRANSITLAND_API_KEY")
     opensky_client_id = os.getenv("OPENSKY_CLIENT_ID")
+    aisstream_key = os.getenv("AISSTREAM_API_KEY")
     aishub_user = os.getenv("AISHUB_USERNAME")
 
     return JsonResponse({
@@ -42,10 +43,10 @@ def live_telemetry_status(request):
                 "mode": "Global GTFS / GTFS-Realtime Transit Feeds",
                 "status": "ONLINE" if transitland_key else "UNCONFIGURED"
             },
-            "aishub_ais": {
-                "enabled": bool(aishub_user),
-                "mode": "Marine AIS Vessels & Ferries",
-                "status": "ONLINE" if aishub_user else "FALLBACK_SIMULATED"
+            "aisstream_marine": {
+                "enabled": bool(aisstream_key),
+                "mode": "Global AIS Ocean Vessels & Ferries (AISStream.io)",
+                "status": "ONLINE" if aisstream_key else "UNCONFIGURED"
             },
             "simulator": {
                 "enabled": True,
