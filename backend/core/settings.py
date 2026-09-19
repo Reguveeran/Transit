@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.tracking.apps.TrackingConfig",
     "apps.alerts.apps.AlertsConfig",
     "apps.analytics.apps.AnalyticsConfig",
+    "apps.devops.apps.DevopsConfig",
 ]
 
 MIDDLEWARE = [
