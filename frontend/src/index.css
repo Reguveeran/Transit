@@ -195,6 +195,7 @@ body {
 .marker-metro { background: #06b6d4; }
 .marker-ferry { background: #10b981; }
 .marker-train { background: #8b5cf6; }
+.marker-aircraft { background: linear-gradient(135deg, #ec4899, #8b5cf6); }
 
 /* Status Badges */
 .status-pill {

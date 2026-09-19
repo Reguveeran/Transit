@@ -24,15 +24,16 @@ PYTHONPATH=backend:. ./.venv/bin/python backend/manage.py run_live_stream --vehi
 ### A. Live Aircraft Tracking (ADS-B Aviation)
 * **Provider**: [The OpenSky Network](https://opensky-network.org/)
 * **Cost**: **Free** (Open community data)
-* **API Key / Credentials**:
-  * **Anonymous Access**: No API key required! You can make requests every 10 seconds for free.
-  * **Registered Account** (Optional for higher limits): Free account signup at [opensky-network.org/my-opensky](https://opensky-network.org/my-opensky).
+* **API Credentials**:
+  * **OpenSky OAuth2 API Client (Connected)**: Create a client at OpenSky user profile -> API Clients.
 * **Configuration in `.env`**:
   ```env
-  OPENSKY_USERNAME=your_free_username
-  OPENSKY_PASSWORD=your_password
+  ENABLE_OPENSKY=true
+  OPENSKY_CLIENT_ID=reguveeran-api-client
+  OPENSKY_CLIENT_SECRET=xccjMwc8m07D6BHext9lImHAq61amgBF
   ```
 * **Adapter Script**: `adapters/adsb/opensky_adapter.py`
+* **OAuth2 Authentication**: Exchanges `clientId` and `clientSecret` for a JWT Bearer token with Keycloak at `https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token`.
 
 ---
 

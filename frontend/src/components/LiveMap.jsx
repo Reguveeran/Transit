@@ -6,9 +6,10 @@ import L from 'leaflet';
 const createVehicleIcon = (mode, status, isSelected) => {
   const modeClass = `marker-${mode || 'bus'}`;
   const selectedBorder = isSelected ? 'border: 3px solid #facc15; transform: scale(1.2);' : '';
+  const symbol = (mode === 'aircraft') ? '✈' : (mode === 'ferry') ? '⚓' : (mode === 'metro') ? 'M' : (mode || 'B')[0].toUpperCase();
   const iconHtml = `
     <div class="custom-vehicle-marker ${modeClass}" style="${selectedBorder}">
-      <span>${(mode || 'B')[0].toUpperCase()}</span>
+      <span>${symbol}</span>
     </div>
   `;
   return L.divIcon({

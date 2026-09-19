@@ -82,6 +82,7 @@ class Command(BaseCommand):
                 tick += 1
                 now_iso = datetime.now(timezone.utc).isoformat()
 
+                # Stream simulated fleet
                 for state, db_veh in fleet:
                     event = state.step(interval_sec=interval, fault_rate=0.03)
                     if not event:
@@ -122,20 +123,70 @@ class Command(BaseCommand):
                             },
                         )
 
-                    # Trigger simulated alert if overspeed
-                    if event.speed > 80.0:
-                        alert_payload = {
-                            "type": "alert_notification",
-                            "data": {
-                                "alert_type": "OVERSPEED",
-                                "severity": "CRITICAL",
-                                "vehicle_id": event.vehicle_id,
-                                "message": f"High Speed Alert: {event.vehicle_id} moving at {event.speed} km/h.",
-                                "timestamp": now_iso,
-                            },
-                        }
-                        if channel_layer:
-                            async_to_sync(channel_layer.group_send)("alerts", alert_payload)
+                # Poll and stream real live aircraft from OpenSky Network every 10s
+                if tick % 5 == 0 and os.getenv("ENABLE_OPENSKY") == "true":
+                    try:
+                        from adapters.adsb.opensky_adapter import fetch_live_flights, normalize_opensky_vector
+                        # Bounding box around regional airspace: lat [10.0, 16.0], lon [76.0, 83.0]
+                        flights = fetch_live_flights(bbox=(10.0, 16.0, 76.0, 83.0))
+                        if not flights:
+                            # Fallback to broader sample if regional box has no current flights
+                            flights = fetch_live_flights()
+                        
+                        plane_mode, _ = TransportMode.objects.get_or_create(
+                            name="aircraft",
+                            defaults={"display_name": "Commercial Aircraft", "icon_name": "plane"},
+                        )
+
+                        for f_state in (flights or [])[:10]:
+                            ev = normalize_opensky_vector(f_state)
+                            if not ev:
+                                continue
+
+                            veh_obj, _ = Vehicle.objects.get_or_create(
+                                vehicle_id=ev.vehicle_id,
+                                defaults={
+                                    "transport_mode": plane_mode,
+                                    "current_latitude": ev.latitude,
+                                    "current_longitude": ev.longitude,
+                                    "current_speed": ev.speed,
+                                    "current_heading": ev.heading,
+                                    "status": ev.status,
+                                    "label": f"Flight {ev.route_id} ({ev.metadata.get('origin_country', 'Air')})",
+                                },
+                            )
+                            Vehicle.objects.filter(id=veh_obj.id).update(
+                                current_latitude=ev.latitude,
+                                current_longitude=ev.longitude,
+                                current_speed=ev.speed,
+                                current_heading=ev.heading,
+                                status=ev.status,
+                                last_seen=datetime.now(timezone.utc),
+                            )
+
+                            if channel_layer:
+                                async_to_sync(channel_layer.group_send)(
+                                    "vehicle_updates",
+                                    {
+                                        "type": "vehicle_update",
+                                        "data": {
+                                            "type": "vehicle.update",
+                                            "vehicle_id": ev.vehicle_id,
+                                            "mode": "aircraft",
+                                            "route_id": ev.route_id,
+                                            "latitude": ev.latitude,
+                                            "longitude": ev.longitude,
+                                            "speed": ev.speed,
+                                            "heading": ev.heading,
+                                            "status": ev.status,
+                                            "delay_seconds": 0,
+                                            "timestamp": now_iso,
+                                        },
+                                    },
+                                )
+                        self.stdout.write(self.style.SUCCESS(f"  ✈️ Streamed {min(10, len(flights or []))} live OpenSky aircraft into live map."))
+                    except Exception as air_err:
+                        logger.error(f"Live aircraft stream note: {air_err}")
 
                 if tick % 5 == 0:
                     self.stdout.write(f"  [~] Broadcast tick #{tick}: stream active for {len(fleet)} vehicles")
