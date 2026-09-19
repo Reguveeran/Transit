@@ -165,10 +165,20 @@ REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_DB = int(os.getenv("REDIS_DB", 0))
 
+import socket
 import sys
+
+def is_redis_available(host, port, timeout=0.5):
+    try:
+        s = socket.create_connection((host, port), timeout=timeout)
+        s.close()
+        return True
+    except (socket.error, socket.timeout):
+        return False
+
 TESTING = "test" in sys.argv or os.getenv("DJANGO_TESTING") == "1"
 
-if TESTING or os.getenv("USE_IN_MEMORY_CHANNELS") == "1":
+if TESTING or os.getenv("USE_IN_MEMORY_CHANNELS") == "1" or not is_redis_available(REDIS_HOST, REDIS_PORT):
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
