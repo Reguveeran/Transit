@@ -1,0 +1,60 @@
+{
+  "editable": true,
+  "panels": [
+    {
+      "title": "Redis Stream Consumer Lag",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "unitransit_stream_consumer_lag",
+          "legendFormat": "Consumer Lag (sec / messages)"
+        }
+      ]
+    },
+    {
+      "title": "Throughput: Processed vs Published Events",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(unitransit_events_processed_total[1m]))",
+          "legendFormat": "Processed Evt/sec"
+        },
+        {
+          "expr": "sum(rate(unitransit_events_published_total[1m]))",
+          "legendFormat": "Published Evt/sec"
+        }
+      ]
+    },
+    {
+      "title": "P95 & P99 Ingestion Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(unitransit_processing_latency_seconds_bucket[1m])) by (le))",
+          "legendFormat": "P95 Latency (s)"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(unitransit_processing_latency_seconds_bucket[1m])) by (le))",
+          "legendFormat": "P99 Latency (s)"
+        }
+      ]
+    },
+    {
+      "title": "Active Worker Concurrency & Health",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(unitransit_worker_up)",
+          "legendFormat": "Active Position Workers"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "title": "5. Kubernetes & Event-Driven Autoscaling",
+  "uid": "unitransit-k8s-autoscale"
+}

@@ -18,6 +18,7 @@ spec:
       containers:
         - name: simulator
           image: unitransit/simulator:latest
+          imagePullPolicy: IfNotPresent
           command:
             - python
             - adapters/simulator/simulator.py

@@ -18,9 +18,15 @@ CHANNEL_ALERTS = "alerts"
 def get_redis_client():
     import redis
 
-    redis_host = os.getenv("REDIS_HOST", "localhost")
-    redis_port = int(os.getenv("REDIS_PORT", 6379))
-    redis_db = int(os.getenv("REDIS_DB", 0))
+    try:
+        from django.conf import settings
+        redis_host = getattr(settings, "REDIS_HOST", os.getenv("REDIS_HOST", "localhost"))
+        redis_port = int(getattr(settings, "REDIS_PORT", os.getenv("REDIS_PORT", 6379)))
+        redis_db = int(getattr(settings, "REDIS_DB", os.getenv("REDIS_DB", 0)))
+    except Exception:
+        redis_host = os.getenv("REDIS_HOST", "localhost")
+        redis_port = int(os.getenv("REDIS_PORT", 6379))
+        redis_db = int(os.getenv("REDIS_DB", 0))
 
     return redis.Redis(
         host=redis_host,

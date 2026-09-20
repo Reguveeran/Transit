@@ -1,0 +1,27 @@
+# ==============================================================================
+# Local Kubernetes Staging Environment Configuration Example
+# ==============================================================================
+
+environment = "staging"
+namespace   = "unitransit-staging"
+
+# Database Configuration (Placeholders)
+postgres_user     = "unitransit"
+postgres_password = "CHANGE_ME_STAGING_PASSWORD"
+postgres_db       = "unitransit"
+
+# Redis Configuration
+redis_stream_key = "transport.events"
+
+# Image Tags (GHCR Git SHA Tags)
+backend_image  = "ghcr.io/reguveeran/unitransit-backend:8916745"
+worker_image   = "ghcr.io/reguveeran/unitransit-worker:8916745"
+frontend_image = "ghcr.io/reguveeran/unitransit-frontend:8916745"
+
+# Sizing & Scaling
+backend_replicas         = 2
+position_worker_replicas = 2
+alert_worker_replicas    = 1
+frontend_replicas        = 2
+prometheus_replicas      = 1
+grafana_replicas         = 1

@@ -57,6 +57,8 @@ class NormalizedTransportEvent:
     heading: float
     status: Union[VehicleStatus, str]
     timestamp: str  # ISO 8601 UTC string
+    event_type: str = "transport.position.updated"
+    schema_version: str = "1.0"
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     trip_id: Optional[str] = None
     occupancy_status: Optional[Union[OccupancyStatus, str]] = OccupancyStatus.MANY_SEATS_AVAILABLE.value
@@ -142,10 +144,18 @@ class NormalizedTransportEvent:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> NormalizedTransportEvent:
         data_copy = dict(data)
-        # Ensure event_id is generated if not provided
         if "event_id" not in data_copy or not data_copy["event_id"]:
             data_copy["event_id"] = str(uuid.uuid4())
-        return cls(**data_copy)
+        valid_fields = cls.__dataclass_fields__.keys()
+        kwargs = {}
+        for k, v in data_copy.items():
+            if k in valid_fields:
+                kwargs[k] = v
+            else:
+                if "metadata" not in kwargs:
+                    kwargs["metadata"] = {}
+                kwargs["metadata"][k] = v
+        return cls(**kwargs)
 
     @classmethod
     def from_json(cls, json_str: str) -> NormalizedTransportEvent:

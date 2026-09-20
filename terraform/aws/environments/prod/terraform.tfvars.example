@@ -1,0 +1,24 @@
+# ==============================================================================
+# AWS Prod Environment Configuration Example (Declarative Model)
+# ==============================================================================
+
+aws_region   = "us-east-1"
+environment  = "prod"
+vpc_cidr     = "10.100.0.0/16"
+cluster_name = "unitransit-prod-eks"
+
+# Sensitive Credentials (Placeholders — Inject via Environment Variables or AWS Secrets Manager)
+db_password       = "CHANGE_ME_PROD_DB_PASSWORD"
+django_secret_key = "CHANGE_ME_PROD_DJANGO_SECRET_KEY"
+
+# Cryptographic SHA-256 Digest Pins (Zero-Latest Policy)
+backend_image  = "ghcr.io/reguveeran/unitransit-backend@sha256:7be9f178dfdb211b8f14acde4ffcf3665a3c051261cb2841accd06c9a38541e2"
+worker_image   = "ghcr.io/reguveeran/unitransit-worker@sha256:7be9f178dfdb211b8f14acde4ffcf3665a3c051261cb2841accd06c9a38541e2"
+frontend_image = "ghcr.io/reguveeran/unitransit-frontend@sha256:e9649216e17ad342130fffa0014ad3eb2ba3473ba772e293a38a7c29be0ecf62"
+
+# Ingress & Edge Configuration (Enabled for production domain)
+enable_ingress = true
+enable_tls     = true
+enable_dns     = true
+domain_name    = "app.example.com"
+hosted_zone_id = "Z0123456789ABCDEF"

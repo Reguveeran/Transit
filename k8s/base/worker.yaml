@@ -18,7 +18,12 @@ spec:
       containers:
         - name: worker-position
           image: unitransit/worker:latest
+          imagePullPolicy: IfNotPresent
+          workingDir: /app
           command: ["python", "workers/position_worker/position_worker.py"]
+          env:
+            - name: PYTHONPATH
+              value: "/app/backend:/app"
           envFrom:
             - configMapRef:
                 name: unitransit-config
@@ -52,7 +57,12 @@ spec:
       containers:
         - name: worker-alert
           image: unitransit/worker:latest
+          imagePullPolicy: IfNotPresent
+          workingDir: /app
           command: ["python", "workers/alert_worker/alert_worker.py"]
+          env:
+            - name: PYTHONPATH
+              value: "/app/backend:/app"
           envFrom:
             - configMapRef:
                 name: unitransit-config

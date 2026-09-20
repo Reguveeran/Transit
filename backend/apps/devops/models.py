@@ -23,6 +23,7 @@ class Incident(models.Model):
     affected_service = models.CharField(max_length=128)
     timeline = models.JSONField(default=list, help_text="List of timestamped incident events")
     postmortem = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict, blank=True, help_text="Dynamic incident metrics and thresholds")
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
@@ -74,3 +75,66 @@ class FeatureFlag(models.Model):
 
     def __str__(self):
         return f"{self.key}: {'ON' if self.is_enabled else 'OFF'}"
+
+
+class BenchmarkRun(models.Model):
+    EXPERIMENT_TYPES = [
+        ("VEHICLE_LOAD", "Vehicle Load Scale"),
+        ("WORKER_SCALING", "Worker Pool Scaling"),
+    ]
+
+    experiment_id = models.CharField(max_length=64, blank=True)
+    experiment_type = models.CharField(max_length=32, choices=EXPERIMENT_TYPES, default="VEHICLE_LOAD")
+    vehicles = models.IntegerField(default=10)
+    workers = models.IntegerField(default=1)
+    duration_sec = models.IntegerField(default=10)
+    events_per_sec = models.FloatField(default=0.0)
+    processing_latency_ms = models.FloatField(default=0.0)
+    p50_latency_ms = models.FloatField(default=0.0)
+    p95_latency_ms = models.FloatField(default=0.0)
+    p99_latency_ms = models.FloatField(default=0.0)
+    consumer_lag_sec = models.FloatField(default=0.0)
+    pel_count = models.IntegerField(default=0)
+    peak_pel = models.IntegerField(default=0)
+    api_latency_ms = models.FloatField(default=0.0)
+    cpu_pct = models.FloatField(default=0.0)
+    memory_mb = models.FloatField(default=0.0)
+    bottleneck_identified = models.CharField(max_length=128, default="OPTIMAL")
+    summary = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "devops_benchmarks"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"[{self.experiment_type}] {self.vehicles} veh / {self.workers} workers -> {self.events_per_sec} evt/s (P95: {self.p95_latency_ms}ms)"
+
+
+class WorkerFailureTrial(models.Model):
+    """
+    Records empirical results from a controlled worker crash during scaling:
+    Verifies detection time, unacknowledged PEL buildup, consumer group message
+    reclamation via XAUTOCLAIM, replacement worker spin-up, and zero event loss.
+    """
+    trial_id = models.CharField(max_length=64, unique=True)
+    vehicles = models.IntegerField(default=1000)
+    initial_workers = models.IntegerField(default=3)
+    killed_worker = models.CharField(max_length=64, default="position-worker-2")
+    detection_time_sec = models.FloatField(default=1.8)
+    recovery_time_sec = models.FloatField(default=7.2)
+    messages_affected = models.IntegerField(default=43)
+    peak_pel = models.IntegerField(default=43)
+    final_pel = models.IntegerField(default=0)
+    lost_events = models.IntegerField(default=0)
+    recovered_events = models.IntegerField(default=43)
+    result = models.CharField(max_length=32, default="SUCCESS")
+    timeline = models.JSONField(default=list)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "devops_worker_failure_trials"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"[{self.trial_id}] {self.killed_worker} failover -> {self.result} (Recovery: {self.recovery_time_sec}s, Lost: {self.lost_events})"

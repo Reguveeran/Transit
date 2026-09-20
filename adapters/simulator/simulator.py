@@ -200,6 +200,7 @@ class TransportSimulator:
         redis_port: int = 6379,
         stream_key: str = "transport.events",
         dry_run: bool = False,
+        event_rate: Optional[float] = None,
     ):
         self.vehicle_count = vehicle_count
         self.interval = interval
@@ -209,6 +210,7 @@ class TransportSimulator:
         self.redis_port = redis_port
         self.stream_key = stream_key
         self.dry_run = dry_run
+        self.event_rate = event_rate
         self.redis_client = None
         self.vehicles: List[SimulatedVehicleState] = []
         self._init_fleet()
@@ -252,16 +254,23 @@ class TransportSimulator:
             self.dry_run = True
             return False
 
-    def publish_event(self, event: NormalizedTransportEvent):
+    def publish_event(self, event: NormalizedTransportEvent) -> Optional[str]:
         if self.dry_run or not self.redis_client:
-            return
+            return None
         payload = event.to_dict()
-        self.redis_client.xadd(
+        msg_id = self.redis_client.xadd(
             self.stream_key,
             {"event": json.dumps(payload)},
             maxlen=50000,
             approximate=True,
         )
+        try:
+            from common.metrics import EVENTS_PUBLISHED_TOTAL
+            mode_str = event.mode.value if hasattr(event.mode, "value") else str(event.mode)
+            EVENTS_PUBLISHED_TOTAL.labels(mode=mode_str, source="simulator").inc()
+        except Exception:
+            pass
+        return msg_id
 
     def run(self, duration_sec: Optional[float] = None):
         self.connect_redis()
@@ -318,6 +327,7 @@ def main():
     parser.add_argument("--stream", type=str, default="transport.events", help="Redis stream key")
     parser.add_argument("--dry-run", action="store_true", help="Run without live Redis broker")
     parser.add_argument("--duration", type=float, default=None, help="Duration in seconds to run")
+    parser.add_argument("--event-rate", type=float, default=None, help="Target events per second throttle rate")
 
     args = parser.parse_args()
 
@@ -330,6 +340,7 @@ def main():
         redis_port=args.redis_port,
         stream_key=args.stream,
         dry_run=args.dry_run,
+        event_rate=args.event_rate,
     )
     sim.run(duration_sec=args.duration)
 

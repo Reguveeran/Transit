@@ -1,2 +1,27 @@
-aws_region  = "us-east-1"
-db_password = "ReplaceWithHighlySecureProductionPassword2026!"
+# ==============================================================================
+# Local Kubernetes Production Environment Configuration Example
+# ==============================================================================
+
+environment = "prod"
+namespace   = "unitransit-prod"
+
+# Database Configuration (Placeholders)
+postgres_user     = "unitransit"
+postgres_password = "CHANGE_ME_PROD_PASSWORD"
+postgres_db       = "unitransit"
+
+# Redis Configuration
+redis_stream_key = "transport.events"
+
+# Cryptographic Immutable Digest Tags (Zero-Latest Policy)
+backend_image  = "ghcr.io/reguveeran/unitransit-backend@sha256:7be9f178dfdb211b8f14acde4ffcf3665a3c051261cb2841accd06c9a38541e2"
+worker_image   = "ghcr.io/reguveeran/unitransit-worker@sha256:7be9f178dfdb211b8f14acde4ffcf3665a3c051261cb2841accd06c9a38541e2"
+frontend_image = "ghcr.io/reguveeran/unitransit-frontend@sha256:e9649216e17ad342130fffa0014ad3eb2ba3473ba772e293a38a7c29be0ecf62"
+
+# Sizing & Scaling
+backend_replicas         = 3
+position_worker_replicas = 2
+alert_worker_replicas    = 2
+frontend_replicas        = 2
+prometheus_replicas      = 1
+grafana_replicas         = 1

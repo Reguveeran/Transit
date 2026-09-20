@@ -17,6 +17,7 @@ export default function App() {
   const [routes, setRoutes] = useState([]);
   const [stops, setStops] = useState([]);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [activeJourney, setActiveJourney] = useState(null);
 
   const { vehicleUpdates, alerts, isConnected } = useWebSocket();
 
@@ -191,7 +192,14 @@ export default function App() {
 
           {activeTab === 'stops' && <StopsView stops={stops} />}
 
-          {activeTab === 'journey' && <JourneyPlanner onSelectJourney={setSelectedVehicle} />}
+          {activeTab === 'journey' && (
+            <JourneyPlanner
+              activeJourney={activeJourney}
+              onSelectJourney={setActiveJourney}
+              onSelectVehicle={setSelectedVehicle}
+              allStops={stops}
+            />
+          )}
 
           {activeTab === 'nearby' && <NearbyTransit onSelectVehicle={setSelectedVehicle} />}
 
@@ -232,6 +240,8 @@ export default function App() {
               stops={stops}
               selectedVehicle={selectedVehicle}
               onSelectVehicle={setSelectedVehicle}
+              activeJourney={activeJourney}
+              onClearJourney={() => setActiveJourney(null)}
             />
 
             {/* Inspector Drawer */}
