@@ -102,7 +102,7 @@ jobs:
     name: "Stages 8-11: Kubernetes Deployment & Automated Rollback Guard"
     needs: container-delivery
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && secrets.KUBECONFIG != ''
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

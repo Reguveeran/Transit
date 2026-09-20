@@ -84,7 +84,6 @@ def seed_default_autoscaling_trial() -> Dict[str, Any]:
 
 
 def get_autoscaling_history() -> List[Dict[str, Any]]:
-    global AUTOSCALING_HISTORY
     if not AUTOSCALING_HISTORY:
         AUTOSCALING_HISTORY.append(seed_default_autoscaling_trial())
     return AUTOSCALING_HISTORY

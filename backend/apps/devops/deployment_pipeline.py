@@ -135,7 +135,6 @@ def seed_default_rollback_trial() -> Dict[str, Any]:
 
 
 def get_rollback_experiment_history() -> List[Dict[str, Any]]:
-    global ROLLBACK_EXPERIMENT_HISTORY
     if not ROLLBACK_EXPERIMENT_HISTORY:
         ROLLBACK_EXPERIMENT_HISTORY.append(seed_default_rollback_trial())
     return ROLLBACK_EXPERIMENT_HISTORY

@@ -45,7 +45,7 @@ jobs:
 
       - name: Run Full Regression Test Suite (77/77 Tests)
         run: |
-          PYTHONPATH=backend:. pytest tests/ -v
+          PYTHONPATH=backend:. python backend/manage.py test tests -v 2
 
       - name: Set up Node.js 20 & Build Frontend Assets
         uses: actions/setup-node@v4

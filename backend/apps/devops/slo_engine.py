@@ -804,7 +804,6 @@ def execute_controlled_slo_experiment() -> Dict[str, Any]:
 
 def get_slo_experiment_history() -> List[Dict[str, Any]]:
     """Returns historical trials of the controlled SLO experiment."""
-    global SLO_EXPERIMENT_HISTORY
     if not SLO_EXPERIMENT_HISTORY:
         execute_controlled_slo_experiment()
     return SLO_EXPERIMENT_HISTORY

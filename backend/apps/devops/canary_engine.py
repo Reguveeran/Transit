@@ -324,7 +324,6 @@ def execute_faulty_canary_rollback_trial() -> Dict[str, Any]:
 
 
 def get_canary_trial_history() -> List[Dict[str, Any]]:
-    global CANARY_TRIAL_HISTORY
     if not CANARY_TRIAL_HISTORY:
         # Seed default historical trial for display
         CANARY_TRIAL_HISTORY.append({
