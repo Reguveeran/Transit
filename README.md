@@ -1,7 +1,7 @@
 # UniTransit: Real-Time Multi-Modal Transport Platform with Cloud-Native DevOps Engineering
 
-[![CI Pipeline](https://github.com/reguveeran/unitransit/actions/workflows/ci.yml/badge.svg)](https://github.com/reguveeran/unitransit/actions/workflows/ci.yml)
-[![Supply Chain Security](https://github.com/reguveeran/unitransit/actions/workflows/supply-chain.yml/badge.svg)](https://github.com/reguveeran/unitransit/actions/workflows/supply-chain.yml)
+[![CI Pipeline](https://github.com/Reguveeran/Transit/actions/workflows/ci.yml/badge.svg)](https://github.com/Reguveeran/Transit/actions/workflows/ci.yml)
+[![Supply Chain Security](https://github.com/Reguveeran/Transit/actions/workflows/supply-chain.yml/badge.svg)](https://github.com/Reguveeran/Transit/actions/workflows/supply-chain.yml)
 [![Tests](https://img.shields.io/badge/tests-77%2F77%20passing-brightgreen.svg)](docs/TESTING.md)
 [![Terraform](https://img.shields.io/badge/terraform-validated-623CE4.svg)](terraform/)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-v1.30-326CE5.svg)](k8s/)
